@@ -608,10 +608,10 @@ def automation():
 
 
 # Online Members
+from telethon.tl.types import UserStatusOnline 
 
 def automation_online_only():
     def banner():
-        # fancy logo
         b = [
             '░█████╗░██████╗░██████╗░███████╗██████╗░',
             '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
@@ -626,22 +626,11 @@ def automation_online_only():
         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
 
-    def log_status(scraped, index):
-        with open('status.dat', 'wb') as f:
-            pickle.dump([scraped, int(index)], f)
-            print(f'{info}{lg} Session stored in {w}status.dat{lg}')
-
     def clr():
         if os.name == 'nt':
             os.system('cls')
         else:
             os.system('clear')
-
-    def exit_window():
-        input(f'\n{cy} Press enter to exit...')
-        clr()
-        banner()
-        sys.exit()
 
     # Initialization and user input
     accounts = []
@@ -678,7 +667,131 @@ def automation_online_only():
         try:
             scraped_grp_entity = client.get_entity(scraped_grp)
             members = client.get_participants(scraped_grp_entity, aggressive=False)
-            online_members = [m for m in members if m.status and m.status.was_online is None]
+            online_members = [
+                m for m in members
+                if isinstance(m.status, UserStatusOnline)  # Check if the user is online
+            ]
+        except Exception as e:
+            print(f'{error}{r} Failed to fetch members: {e}')
+            continue
+
+        print(f'{info}{lg} Found {w}{len(online_members)}{lg} online members.')
+
+        # Joining the target group
+        try:
+            if '/joinchat/' in target_grp:
+                invite_hash = target_grp.split('/joinchat/')[1]
+                client(ImportChatInviteRequest(invite_hash))
+            else:
+                client(JoinChannelRequest(target_grp))
+            target_entity = client.get_entity(target_grp)
+            target_details = InputPeerChannel(target_entity.id, target_entity.access_hash)
+        except Exception as e:
+            print(f'{error}{r} Failed to join target group: {e}')
+            continue
+
+        # Adding online members to target group
+        for user in online_members:
+            if user.bot:
+                continue
+            try:
+                client(InviteToChannelRequest(target_details, [user]))
+                print(f'{success}{lg} Added member: {w}{user.username or user.id}')
+                time.sleep(sleep_time)
+            except Exception as e:
+                print(f'{error}{r} Failed to add member: {e}')
+                continue
+
+        client.disconnect()
+        print(f'{info}{lg} Finished processing account: {acc[0]}')
+
+    print(f'{success}{lg} All online members added successfully!{rs}')
+
+# Fetch groups Online Members
+
+def fetch_and_add_online_members():
+    def banner():
+        b = [
+            '░█████╗░██████╗░██████╗░███████╗██████╗░',
+            '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+            '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+            '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+            '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+            '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+        ]
+        for char in b:
+            print(f'{random.choice(colors)}{char}{rs}')
+        print('Contact below address for get premium script')
+        print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
+        print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+
+    def clr():
+        if os.name == 'nt':
+            os.system('cls')
+        else:
+            os.system('clear')
+
+    # Initialization and user input
+    accounts = []
+    with open('vars.txt', 'rb') as f:
+        while True:
+            try:
+                accounts.append(pickle.load(f))
+            except EOFError:
+                break
+
+    print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
+
+    groups = {}
+    for acc in accounts:
+        client = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+        client.connect()
+        client.start(acc[0])
+        print(f'{info}{lg} Logged in as {client.get_me().first_name}')
+
+        try:
+            dialogs = client.get_dialogs()
+            for dialog in dialogs:
+                if dialog.is_group or dialog.is_channel:
+                    entity = dialog.entity
+                    if hasattr(entity, 'access_hash'):
+                        groups[f"{entity.id}:{entity.access_hash}"] = dialog.name
+        except Exception as e:
+            print(f'{error}{r} Failed to fetch groups for {acc[0]}: {e}')
+            client.disconnect()
+            continue
+
+        client.disconnect()
+
+    if not groups:
+        print(f'{error}{r} No groups found for any account.')
+        return
+
+    print(f'\n{info}{lg} Available Groups:')
+    for i, (grp_key, grp_name) in enumerate(groups.items(), start=1):
+        print(f'{i}. {grp_name}')
+    
+    selected_group_idx = int(input(f'\n{INPUT}{cy} Select the group to scrape online members from (Enter number): {r}'))
+    selected_group_key = list(groups.keys())[selected_group_idx - 1]
+    selected_group_id, selected_group_hash = map(int, selected_group_key.split(':'))
+
+    target_grp = input(f'{INPUT}{cy} Enter group URL to add members: {r}')
+    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request: {r}'))
+
+    for acc in accounts:
+        client = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+        client.connect()
+        client.start(acc[0])
+        print(f'{info}{lg} Logged in as {client.get_me().first_name}')
+
+        # Fetching only online members
+        try:
+            scraped_grp_entity = InputPeerChannel(selected_group_id, selected_group_hash)
+            members = client.get_participants(scraped_grp_entity, aggressive=False)
+            online_members = [
+                m for m in members
+                if isinstance(m.status, UserStatusOnline)  # Check if the user is online
+            ]
         except Exception as e:
             print(f'{error}{r} Failed to fetch members: {e}')
             continue
@@ -2005,15 +2118,16 @@ def main_menu():
 {cy}╚════════════════════════════════════╝
 {lg}1.{rs} Manage Account
 {lg}2.{rs} Automate Scraping and Members Adding
-{lg}3.{rs} Automate Scraping and Hidden Members Adding
-{lg}4.{rs} Automate Scraping and Hidden Members Adding with No Share Links
-{lg}5.{rs} Move Messages From Group to Group
-{lg}6.{rs} Send Bulk Messages to All Scraped Members (DMs)
-{lg}7.{rs} Scrape and Add Members Without Share Links
-{lg}8.{rs} Move Messages From Group to Group Without Share Links
-{lg}9.{rs} Move Old Messages From Group to Group
-{lg}10.{rs} Exit Scrapeleet
-{lg}11.{rs} Online Members
+{lg}3.{rs} Automate Scraping and Online Members Adding (New)
+{lg}4.{rs} Automate Scraping and Online Members Adding That has no share link (New)
+{lg}5.{rs} Automate Scraping and Hidden Members Adding
+{lg}6.{rs} Automate Scraping and Hidden Members Adding with No Share Links
+{lg}7.{rs} Move Messages From Group to Group (New)
+{lg}8.{rs} Send Bulk Messages to All Scraped Members (DMs)
+{lg}9.{rs} Scrape and Add Members That has no Share Links
+{lg}10.{rs} Move Messages From Group to Group That has no Share Links (New)
+{lg}11.{rs} Move Old Messages From Group to Group
+{lg}12.{rs} Exit Scrapeleet
 """
 
     while True:
@@ -2026,25 +2140,27 @@ def main_menu():
             while True:
                 automation()
         elif choice == '3':
-            hidden_members()
+            automation_online_only()
         elif choice == '4':
-            scrape_hidden_members_from_groups()
+            fetch_and_add_online_members()
         elif choice == '5':
-            move_messages()
+            hidden_members()
         elif choice == '6':
-            scrape_and_send_bulk_message()
+            scrape_hidden_members_from_groups()
         elif choice == '7':
-            start_scraping_and_adding()
+            move_messages()
         elif choice == '8':
-            transfer_group_messages()
+            scrape_and_send_bulk_message()
         elif choice == '9':
+            start_scraping_and_adding()
+        elif choice == '10':
+            transfer_group_messages()
+        elif choice == '11':
             print('Automating moving old messages from group to group, coming in the next upgrade Scrapeleet V2.1')
             print('Thanks for using scrapeleet')
-        elif choice == '10':
+        elif choice == '12':
             print('Thanks for using Scrapeleet!')
             break
-        elif choice == '11':
-            automation_online_only()
         else:
             print(f'{error} {r}Invalid choice! Please select a valid option.{rs}')
             continue
