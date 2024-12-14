@@ -2398,11 +2398,16 @@ def save_token(token):
         file.write(token)  # Write the token to the file
 
 
-# Only 3 Devices
-
 import os
 import uuid
 import platform
+from colorama import Fore
+
+# Define colors
+r = Fore.RED
+lg = Fore.GREEN
+rs = Fore.RESET
+cy = Fore.CYAN
 
 # File to store the unique device identifiers
 DEVICE_FILE = "device_ids.txt"
@@ -2413,7 +2418,7 @@ def get_device_id():
     Get a unique identifier for the device.
     This example uses the MAC address, but you could use other unique identifiers like UUID.
     """
-    if platform.system() == "Linux" or platform.system() == "Darwin":
+    if platform.system() in ["Linux", "Darwin"]:
         # Get MAC address for Linux and macOS
         mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
         return mac
@@ -2445,47 +2450,24 @@ def is_device_allowed():
     device_id = get_device_id()
     device_ids = read_device_ids()
 
-    if len(device_ids) >= MAX_DEVICES:
-        print(f"Device limit reached ({MAX_DEVICES}). Cannot run the script on more devices.")
-        return False
-    
-    # If device is not already in the list, add it
-    if device_id not in device_ids:
-        save_device_id(device_id)
-        print(f"Device {device_id} registered successfully.")
+    if device_id in device_ids:
+        print(f"{lg}Device already registered. Access granted.{rs}")
+        return True
 
+    if len(device_ids) >= MAX_DEVICES:
+        print(f"{r}Device limit reached ({MAX_DEVICES}). Cannot run the script on more devices.{rs}")
+        return False
+
+    save_device_id(device_id)
+    print(f"{lg}Device {device_id} registered successfully. Access granted.{rs}")
     return True
 
 def main_three_devices():
     if not is_device_allowed():
-        print("Exiting... This device is not allowed to run the script.")
-        return
-    
-    print("Script is running...")
-
-
-
-
-
-from colorama import Fore
-
-# Define colors
-r = Fore.RED
-lg = Fore.GREEN
-rs = Fore.RESET
-w = Fore.WHITE
-grey = '\033[97m'
-cy = Fore.CYAN
-ye = Fore.YELLOW
-colors = [r, lg, w, ye, cy]
-
-# Define formatted messages
-info = f'{lg}[{w}i{lg}]{rs}'
-error = f'{lg}[{r}!{lg}]{rs}'
-success = f'{w}[{lg}*{w}]{rs}'
-INPUT = f'{lg}[{cy}~{lg}]{rs}'
-plus = f'{w}[{lg}+{w}]{rs}'
-minus = f'{w}[{lg}-{w}]{rs}'
+        print(f"{r}Exiting... This device is not allowed to run the script.{rs}")
+        return False
+    print(f"{lg}Script is running...{rs}")
+    return True
 
 def main_menu():
     token = load_token()
@@ -2506,9 +2488,10 @@ def main_menu():
                 save_token(token)
                 break
 
-    main_three_devices()
+    if not main_three_devices():
+        return
 
-    """Display the main menu with options."""
+    # Display the main menu with options
     menu = f"""
 {cy}╔════════════════════════════════════╗
 {cy}║             {lg}Main Menu{cy}              ║
@@ -2541,7 +2524,7 @@ def main_menu():
 
     while True:
         print(menu)
-        choice = input(f'\n{INPUT}{cy} Select an action: {rs}')
+        choice = input(f'\n{cy} Select an action: {rs}')
 
         if choice == '1':
             manager()
@@ -2572,12 +2555,11 @@ def main_menu():
             print('Thanks for using Scrapeleet!')
             break
         else:
-            print(f'{error} {r}Invalid choice! Please select a valid option.{rs}')
+            print(f'{r}Invalid choice! Please select a valid option.{rs}')
             continue
-
 
 if __name__ == '__main__':
     try:
         main_menu()
     except KeyboardInterrupt:
-        print(f'\n{error} {r}Operation interrupted by the user. Exiting...{rs}')
+        print(f'\n{r}Operation interrupted by the user. Exiting...{rs}')

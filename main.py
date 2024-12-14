@@ -92,6 +92,19 @@ def manager():
 
         if a == 1:
             new_accs = []
+            existing_numbers = set()
+            
+            # Load existing numbers from vars.txt
+            try:
+                with open('vars.txt', 'rb') as file:
+                    while True:
+                        try:
+                            existing_numbers.update(pickle.load(file))
+                        except EOFError:
+                            break
+            except FileNotFoundError:
+                pass  # File doesn't exist yet, so no numbers to load
+
             with open('vars.txt', 'ab') as g:
                 # Loop to ensure user enters a valid integer for the number of accounts to add
                 while True:
@@ -109,8 +122,12 @@ def manager():
                         phone_number = input(f'\n{lg} [~] Enter Phone Number With Country Code: {r}').strip()
                         if phone_number.isdigit():
                             parsed_number = ''.join(phone_number.split())
+                            if parsed_number in existing_numbers:
+                                print(f'{error} This phone number already exists in the file.')
+                                continue
                             pickle.dump([parsed_number], g)
                             new_accs.append(parsed_number)
+                            existing_numbers.add(parsed_number)
                             break  # Exit the loop if a valid phone number is entered
                         else:
                             print(f'{error} Please enter a valid phone number with only digits.')
@@ -205,32 +222,79 @@ def manager():
         elif a == 4:
             print(f'\n{lg}[i] Checking for updates...')
             try:
-                version = requests.get('https://raw.githubusercontent.com/saifalisew1508/Telegram-Members-Adder/main/version.txt')
-            except:
-                print(f'{r} You are not connected to the internet')
-                print(f'{r} Please connect to the internet and retry')
+                version_url = 'https://raw.githubusercontent.com/Adexbobo23/scrapeleet_update/main/version.txt'
+                version = requests.get(version_url).text.strip()
+            except Exception as e:
+                print(f'{r} You are not connected to the internet or the server is unavailable.')
+                print(f'{r} Error: {e}')
+                print(f'{r} Please connect to the internet and retry.')
                 exit()
-            if float(version.text) > 2.0:
-                prompt = str(input(f'{lg}[~] Update available[Version {version.text}]. Download?[y/n]: {r}'))
-                if prompt in {'y', 'yes', 'Y'}:
+
+            local_version = 2.0  # Update this to your script's current version
+            if float(version) > local_version:
+                prompt = str(input(f'{lg}[~] Update available [Version {version}]. Download? [y/n]: {r}')).strip().lower()
+                if prompt in {'y', 'yes'}:
                     print(f'{lg}[i] Downloading updates...')
-                    if os.name == 'nt':
-                        os.system('del add.py')
-                        os.system('del manager.py')
-                    else:
-                        os.system('rm add.py')
-                        os.system('rm manager.py')
-                    os.system('curl -l -O https://raw.githubusercontent.com/saifalisew1508/Telegram-Members-Adder/main/add.py')
-                    os.system('curl -l -O https://raw.githubusercontent.com/saifalisew1508/Telegram-Members-Adder/main/manager.py')
-                    print(f'{lg}[*] Updated to version: {version.text}')
-                    input('Press enter to exit...')
-                    exit()
+                    try:
+                        file_url = 'https://raw.githubusercontent.com/Adexbobo23/scrapeleet_update/main/main.pyc'
+                        response = requests.get(file_url)
+                        response.raise_for_status()  # Check for HTTP request errors
+
+                        # Backup existing file (overwrite if the backup already exists)
+                        if os.path.exists('main.pyc'):
+                            os.replace('main.pyc', 'main.pyc.bak')
+
+                        # Save the updated file with UTF-8 encoding
+                        with open('main.pyc', 'w', encoding='utf-8') as f:
+                            f.write(response.text)
+                        
+                        print(f'{lg}[+] Successfully updated main.pyc to version {version}.')
+                        input('Press enter to exit...')
+                        exit()
+                    except Exception as e:
+                        print(f'{r}[!] Failed to update main.pyc. Error: {e}')
+                        # Restore backup if update fails
+                        if os.path.exists('main.pyc.bak'):
+                            os.replace('main.pyc.bak', 'main.pyc')
+                        print(f'{r}[!] Reverted to the previous version of main.pyc.')
+                        input('Press enter to go to the main menu...')
                 else:
                     print(f'{lg}[!] Update aborted.')
-                    input('Press enter to goto main menu...')
+                    input('Press enter to go to the main menu...')
             else:
-                print(f'{lg}[i] Your Scrapeleet Telegram-Members-Adder is already up to date')
-                input('Press enter to goto main menu...')
+                print(f'{lg}[i] Your Telegram-Members-Adder is already up to date.')
+                input('Press enter to go to the main menu...')
+
+
+        # elif a == 4:
+        #     print(f'\n{lg}[i] Checking for updates...')
+        #     try:
+        #         version = requests.get('https://raw.githubusercontent.com/Adexbobo23/scrapeleet_update/main/version.txt')
+        #     except:
+        #         print(f'{r} You are not connected to the internet')
+        #         print(f'{r} Please connect to the internet and retry')
+        #         exit()
+        #     if float(version.text) > 2.0:
+        #         prompt = str(input(f'{lg}[~] Update available[Version {version.text}]. Download?[y/n]: {r}'))
+        #         if prompt in {'y', 'yes', 'Y'}:
+        #             print(f'{lg}[i] Downloading updates...')
+        #             if os.name == 'nt':
+        #                 os.system('del add.py')
+        #                 os.system('del manager.py')
+        #             else:
+        #                 os.system('rm add.py')
+        #                 os.system('rm manager.py')
+        #             os.system('curl -l -O https://raw.githubusercontent.com/Adexbobo23/scrapeleet_update/main/add.py')
+        #             os.system('curl -l -O https://raw.githubusercontent.com/Adexbobo23/scrapeleet_update/main/manager.py')
+        #             print(f'{lg}[*] Updated to version: {version.text}')
+        #             input('Press enter to exit...')
+        #             exit()
+        #         else:
+        #             print(f'{lg}[!] Update aborted.')
+        #             input('Press enter to goto main menu...')
+        #     else:
+        #         print(f'{lg}[i] Your Scrapeleet Telegram-Members-Adder is already up to date')
+        #         input('Press enter to goto main menu...')
 
         elif a == 5:
             accs = []
@@ -438,6 +502,15 @@ def automation():
     print(f'{info} Sessions created!')
     clr()
     banner()
+
+    print('Adding Account To Scrapeleet Channels in case you wanna speak to us')
+    auto_join_group()
+    print('All Account added successfully to Scrapeleet group\n')
+
+    print("Loading and Checking for verifications")
+    auto_join_group_smmleet()
+    time.sleep(5)
+    print("Checking Verification Done\n")
 
     # func to log scraping details(link of the grp to scrape and current index) in order to resume later
     def log_status(scraped, index):
@@ -831,22 +904,36 @@ def fetch_and_add_online_members():
 
 # Self Joined Groups
 
+# Initialize colorama
+init()
+
+# Color shortcuts
+r = Fore.RED
+lg = Fore.LIGHTGREEN_EX
+rs = Fore.RESET
+w = Fore.WHITE
+cy = Fore.CYAN
+ye = Fore.YELLOW
+
+# Styled markers
+info = f'{lg}[{w}i{lg}]{rs}'
+error = f'{lg}[{r}!{lg}]{rs}'
+success = f'{w}[{lg}*{w}]{rs}'
+INPUT = f'{lg}[{cy}~{lg}]{rs}'
+
 def start_scraping_and_adding():
     def banner():
-        # fancy logo
         b = [
-            '░█████╗░██████╗░██████╗░███████╗██████╗░',
-            '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
-            '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
-            '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
-            '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
-            '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+            f'{cy}░█████╗░██████╗░██████╗░███████╗██████╗░',
+            f'{cy}██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+            f'{cy}███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+            f'{cy}██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+            f'{cy}██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+            f'{cy}╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝{rs}'
         ]
         for char in b:
-            print(f'{random.choice(colors)}{char}{rs}')
-        print('Contact below address for get premium script')
-        print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
-        print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+            print(char)
+        print(f'{lg}Contact below address for premium scripts{rs}')
 
     def clr():
         if os.name == 'nt':
@@ -854,48 +941,9 @@ def start_scraping_and_adding():
         else:
             os.system('clear')
 
-    accounts = []
-    with open('vars.txt', 'rb') as f:
-        while True:
-            try:
-                accounts.append(pickle.load(f))
-            except EOFError:
-                break
-
-    print('\n' + info + lg + ' Checking for banned accounts...' + rs)
-    for a in accounts:
-        phn = a[0]
-        print(f'{plus}{grey} Checking {lg}{phn}')
-        clnt = TelegramClient(f'sessions/{phn}', 3910389, '86f861352f0ab76a251866059a6adbd6')
-        clnt.connect()
-        banned = []
-        if not clnt.is_user_authorized():
-            try:
-                clnt.send_code_request(phn)
-                print('OK')
-            except PhoneNumberBannedError:
-                print(f'{error} {w}{phn} {r}is banned!{rs}')
-                banned.append(a)
-        for z in banned:
-            accounts.remove(z)
-        time.sleep(0.5)
-        clnt.disconnect()
-
-    print(f'{info} Sessions created!')
     clr()
     banner()
 
-    def log_status(scraped, index):
-        with open('status.dat', 'wb') as f:
-            pickle.dump([scraped, int(index)], f)
-        print(f'{info}{lg} Session stored in {w}status.dat{lg}')
-
-    def exit_window():
-        input(f'\n{cy} Press enter to exit...')
-        clr()
-        banner()
-        sys.exit()
-
     accounts = []
     with open('vars.txt', 'rb') as f:
         while True:
@@ -904,46 +952,73 @@ def start_scraping_and_adding():
             except EOFError:
                 break
 
-    print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
-    number_of_accs = int(input(f'{INPUT}{cy} How Many Accounts You Want Use In Adding: {r}'))
+    print(f'{info} Total accounts: {len(accounts)}')
+    number_of_accs = int(input(f'{INPUT} {cy}How Many Accounts You Want to Use In Adding:{rs} '))
     to_use = accounts[:number_of_accs]
 
+    group_link = input(f'{INPUT} {cy}Enter the link of the group to add members to:{rs} ')
+
     for acc in to_use:
-        c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
-        c.connect()
-
-        dialogs = c.get_dialogs()
-        groups = [d for d in dialogs if d.is_group or d.is_channel]
-        print(f'\n{lg}Available groups for {acc[0]}:')
-        for i, group in enumerate(groups):
-            print(f'{i + 1}. {group.title}')
-
-        group_index = int(input(f'{INPUT}{cy} Select a group to scrape members from (1-{len(groups)}): {r}')) - 1
-        scraped_grp = groups[group_index].id
-
-        group_index_target = int(input(f'{INPUT}{cy} Select a group to add members to (1-{len(groups)}): {r}')) - 1
-        target_grp = groups[group_index_target].id
-
-        members = c.get_participants(scraped_grp, aggressive=False)
-        print(f'{info}{lg} Scraping members from {groups[group_index].title}...')
-
-        sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request{w}[{lg}0 for None{w}]: {r}'))
-        
-        for member in members:
+        with TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6') as c:
             try:
-                c(InviteToChannelRequest(target_grp, [member]))
-                print(f'{success}{lg} Added member {cy}{member.username}')
-                time.sleep(sleep_time)
+                target_grp_entity = c.get_entity(group_link)
+                c(JoinChannelRequest(target_grp_entity))
+                print(f'{success} {lg}{acc[0]}{rs} joined the group {cy}{group_link}{rs}')
+                time.sleep(3)
+            except ChannelInvalidError:
+                print(f'{error} Invalid group link or account restrictions for {lg}{acc[0]}{rs}')
+            except FloodWaitError as e:
+                print(f'{error} FloodWaitError: Must wait {ye}{e.seconds}{rs} seconds for {lg}{acc[0]}{rs}')
+                time.sleep(e.seconds)
             except Exception as e:
-                print(f'{error}{r} Error: {e}')
-                time.sleep(5)
-                continue
-        
-        print(f'{info}{lg} Finished adding members to {groups[group_index_target].title}!{rs}')
-        c.disconnect()
+                print(f'{error} Error joining group for {lg}{acc[0]}{rs}: {r}{e}{rs}')
+
+    for acc in to_use:
+        with TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6') as c:
+            try:
+                dialogs = c.get_dialogs()
+                groups = [d for d in dialogs if d.is_group or d.is_channel]
+                print(f'\n{info} {cy}Available groups for {lg}{acc[0]}{rs}:')
+
+                for i, group in enumerate(groups):
+                    print(f'{lg}{i + 1}.{rs} {w}{group.title}{rs}')
+
+                group_index = int(input(f'{INPUT} {cy}Select a group to scrape members from (1-{len(groups)}):{rs} ')) - 1
+                scraped_grp = groups[group_index]
+
+                members = c.get_participants(scraped_grp, aggressive=True)
+                print(f'{info} {lg}Scraped {cy}{len(members)}{lg} members from {cy}{scraped_grp.title}{rs}')
+
+                delay_time = int(input(f'{INPUT} {cy}Enter delay time per request [0 for None]:{rs} '))
+
+                target_grp_entity = c.get_entity(group_link)
+
+                for member in members:
+                    try:
+                        c(InviteToChannelRequest(target_grp_entity, [member]))
+                        print(f'{success} Added member {cy}{member.username or member.id}{rs}')
+                        if delay_time > 0:
+                            time.sleep(delay_time)
+                    except UserPrivacyRestrictedError:
+                        print(f'{error} Privacy restrictions for {cy}{member.username or member.id}{rs}')
+                    except FloodWaitError as e:
+                        print(f'{error} FloodWaitError: Must wait {ye}{e.seconds}{rs} seconds')
+                        time.sleep(e.seconds)
+                    except Exception as e:
+                        print(f'{error} Error adding {cy}{member.username or member.id}{rs}: {r}{e}{rs}')
+                        time.sleep(5)
+
+            except Exception as e:
+                print(f'{error} Error scraping or adding members for {lg}{acc[0]}{rs}: {r}{e}{rs}')
+
+    print(f'{info} {lg}Finished adding members!{rs}')
 
 
 # Message Moving
+from telethon.tl.functions.messages import ForwardMessagesRequest
+from telethon.tl.functions.messages import SendMessageRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.messages import ImportChatInviteRequest
 
 def move_messages():
     def banner():
@@ -957,7 +1032,7 @@ def move_messages():
         ]
         for char in b:
             print(f'{random.choice(colors)}{char}{rs}')
-        print('Contact below address for get premium script')
+        print('Contact below address for premium script')
         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
 
@@ -1000,98 +1075,362 @@ def move_messages():
     clr()
     banner()
 
-    try:
-        with open('status.dat', 'rb') as f:
-            status = pickle.load(f)
-            f.close()
-            lol = input(f'{INPUT}{cy} Resume moving messages from {w}{status[0]}{lg}? [y/n]: {r}')
-            if 'y' in lol:
-                scraped_grp = status[0]
-                index = int(status[1])
-            else:
-                if os.name == 'nt':
-                    os.system('del status.dat')
-                else:
-                    os.system('rm status.dat')
-                scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
-                index = 0
-    except:
-        scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
-        index = 0
+    scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
+    print("\nIf the group you want to scrape messages from has security verification,")
+    print("you'll need to join the group manually.")
+    print("Complete the verification process by answering the required questions before proceeding with message scraping.")
+    target = input(f'\n{INPUT}{cy} Enter group URL link to move messages to: {r}')
+    message_limit = int(input(f'{INPUT}{cy} Enter the number of messages to copy: {r}'))
+    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request [suggest 30]: {r}'))
 
-    print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
-    number_of_accs = int(input(f'{INPUT}{cy} How Many Accounts You Want to Use in Moving: {r}'))
-    print(f'{info}{cy} Choose an option{lg}')
-    print(f'{cy}[0]{lg} Move to public group')
-    print(f'{cy}[1]{lg} Move to private group')
-    choice = int(input(f'{INPUT}{cy} Enter choice: {r}'))
-
-    print("""
-        If a group have a security verification when joining, make sure you join the group yourself and answer the group verification to avoid kicking out from moving message on telegram, 
-        scraper can only join group but can’t verification the group question and answer, 
-        failure to verify the group verification may result to restriction from telegram\n
-    """)
-    target = input(f'{INPUT}{cy} Enter group URL link to move messages to: {r}')
-    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request {w}[{lg}0 for None, suggest 30{w}]: {r}'))
-
-    to_use = list(accounts[:number_of_accs])
-    for l in to_use: accounts.remove(l)
-    with open('vars.txt', 'wb') as f:
-        for a in accounts:
-            pickle.dump(a, f)
-        for ab in to_use:
-            pickle.dump(ab, f)
-
-    account_index = 0
     account_clients = []
-    for acc in to_use:
+    for acc in accounts:
         c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
         c.start(acc[0])
         account_clients.append((acc[0], c))
 
-    # Connect to the scraped group and target group for each account
+    # Connect to groups
     for _, client in account_clients:
         if '/joinchat/' in scraped_grp:
             g_hash = scraped_grp.split('/joinchat/')[1]
             client(ImportChatInviteRequest(g_hash))
         else:
             client(JoinChannelRequest(scraped_grp))
-        
+
         if '/joinchat/' in target:
-            grp_hash = target.split('/joinchat/')[1]
-            client(ImportChatInviteRequest(grp_hash))
+            g_hash = target.split('/joinchat/')[1]
+            client(ImportChatInviteRequest(g_hash))
         else:
             client(JoinChannelRequest(target))
 
-    # Retrieving messages from the source group
-    try:
-        message_limit = int(input('Enter amount of messages to copy (e.g., 10): '))
-        messages = account_clients[0][1].get_messages(scraped_grp, limit=message_limit)
-    except Exception as e:
-        print(f'{error}{r} Couldn\'t retrieve messages')
-        print(f'{error}{r} {e}')
-        return
+    # Retrieve messages
+    messages = account_clients[0][1].get_messages(scraped_grp, limit=message_limit)
 
+    # Move messages
+    account_index = 0
     for msg in messages:
         try:
             acc_phone, client = account_clients[account_index]
             target_details = client.get_entity(target)
-            client(SendMessageRequest(target_details, msg.text))
-            print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved message: {cy}{msg.text}')
+
+            if msg.media:
+                # Forward media messages
+                client(ForwardMessagesRequest(
+                    from_peer=scraped_grp,
+                    id=[msg.id],
+                    to_peer=target_details
+                ))
+                print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved media message: {cy}{msg.id}')
+            else:
+                # Send text messages
+                client(SendMessageRequest(target_details, msg.text))
+                print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved message: {cy}{msg.text}')
 
             if sleep_time > 0:
                 time.sleep(sleep_time)
-            
+
             account_index = (account_index + 1) % len(account_clients)
 
         except Exception as e:
             print(f'{error}{r} Error moving message: {e}')
             continue
 
+    # Disconnect clients
     for _, client in account_clients:
         client.disconnect()
 
     print(f'{info}{lg} Finished moving messages!{rs}')
+
+
+# def move_messages():
+#     def banner():
+#         b = [
+#             '░█████╗░██████╗░██████╗░███████╗██████╗░',
+#             '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+#             '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+#             '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+#             '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+#             '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+#         ]
+#         for char in b:
+#             print(f'{random.choice(colors)}{char}{rs}')
+#         print('Contact below address for get premium script')
+#         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
+#         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+
+#     def clr():
+#         if os.name == 'nt':
+#             os.system('cls')
+#         else:
+#             os.system('clear')
+
+#     accounts = []
+#     with open('vars.txt', 'rb') as f:
+#         while True:
+#             try:
+#                 accounts.append(pickle.load(f))
+#             except EOFError:
+#                 break
+
+#     print('\n' + info + lg + ' Checking for banned accounts...' + rs)
+#     banned = []
+#     for a in accounts:
+#         phn = a[0]
+#         print(f'{plus}{grey} Checking {lg}{phn}')
+#         clnt = TelegramClient(f'sessions/{phn}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         clnt.connect()
+#         if not clnt.is_user_authorized():
+#             try:
+#                 clnt.send_code_request(phn)
+#                 print('OK')
+#             except:
+#                 print(f'{error} {w}{phn} {r}is banned!{rs}')
+#                 banned.append(a)
+#         time.sleep(0.5)
+#         clnt.disconnect()
+
+#     for z in banned:
+#         accounts.remove(z)
+#         print(info + lg + ' Banned account removed' + rs)
+
+#     print(f'{info} Sessions created!')
+#     clr()
+#     banner()
+
+#     try:
+#         with open('status.dat', 'rb') as f:
+#             status = pickle.load(f)
+#             f.close()
+#             lol = input(f'{INPUT}{cy} Resume moving messages from {w}{status[0]}{lg}? [y/n]: {r}')
+#             if 'y' in lol:
+#                 scraped_grp = status[0]
+#                 index = int(status[1])
+#             else:
+#                 if os.name == 'nt':
+#                     os.system('del status.dat')
+#                 else:
+#                     os.system('rm status.dat')
+#                 scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
+#                 index = 0
+#     except:
+#         scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
+#         index = 0
+
+#     print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
+#     number_of_accs = int(input(f'{INPUT}{cy} How Many Accounts You Want to Use in Moving: {r}'))
+#     print(f'{info}{cy} Choose an option{lg}')
+#     print(f'{cy}[0]{lg} Move to public group')
+#     print(f'{cy}[1]{lg} Move to private group')
+#     choice = int(input(f'{INPUT}{cy} Enter choice: {r}'))
+
+#     print("If a group has a security verification when joining, make sure you join the group yourself and complete the verification process.")
+#     print("This will help you avoid being removed while moving messages on Telegram.")
+
+#     print("The scraper can only join the group but cannot handle the verification questions and answers.")
+#     print("Failure to verify the group may result in restrictions from Telegram.\n")
+
+#     target = input(f'{INPUT}{cy} Enter group URL link to move messages to: {r}')
+#     sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request {w}[{lg}0 for None, suggest 30{w}]: {r}'))
+
+#     to_use = list(accounts[:number_of_accs])
+#     for l in to_use: accounts.remove(l)
+#     with open('vars.txt', 'wb') as f:
+#         for a in accounts:
+#             pickle.dump(a, f)
+#         for ab in to_use:
+#             pickle.dump(ab, f)
+
+#     account_index = 0
+#     account_clients = []
+#     for acc in to_use:
+#         c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         c.start(acc[0])
+#         account_clients.append((acc[0], c))
+
+#     # Connect to the scraped group and target group for each account
+#     for _, client in account_clients:
+#         if '/joinchat/' in scraped_grp:
+#             g_hash = scraped_grp.split('/joinchat/')[1]
+#             client(ImportChatInviteRequest(g_hash))
+#         else:
+#             client(JoinChannelRequest(scraped_grp))
+        
+#         if '/joinchat/' in target:
+#             grp_hash = target.split('/joinchat/')[1]
+#             client(ImportChatInviteRequest(grp_hash))
+#         else:
+#             client(JoinChannelRequest(target))
+
+#     # Retrieving messages from the source group
+#     try:
+#         message_limit = int(input('Enter amount of messages to copy (e.g., 10): '))
+#         messages = account_clients[0][1].get_messages(scraped_grp, limit=message_limit)
+#     except Exception as e:
+#         print(f'{error}{r} Couldn\'t retrieve messages')
+#         print(f'{error}{r} {e}')
+#         return
+
+#     for msg in messages:
+#         try:
+#             acc_phone, client = account_clients[account_index]
+#             target_details = client.get_entity(target)
+#             client(SendMessageRequest(target_details, msg.text))
+#             print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved message: {cy}{msg.text}')
+
+#             if sleep_time > 0:
+#                 time.sleep(sleep_time)
+            
+#             account_index = (account_index + 1) % len(account_clients)
+
+#         except Exception as e:
+#             print(f'{error}{r} Error moving message: {e}')
+#             continue
+
+#     for _, client in account_clients:
+#         client.disconnect()
+
+#     print(f'{info}{lg} Finished moving messages!{rs}')
+
+def move_old_messages():
+    def banner():
+        b = [
+            '░█████╗░██████╗░██████╗░███████╗██████╗░',
+            '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+            '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+            '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+            '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+            '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+        ]
+        for char in b:
+            print(f'{random.choice(colors)}{char}{rs}')
+        print('Contact below address for premium script')
+        print(f'{lg}Version: {w}2.1{lg} | GitHub: {w}@Scrapeleet{rs}')
+        print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+
+    def clr():
+        if os.name == 'nt':
+            os.system('cls')
+        else:
+            os.system('clear')
+
+    accounts = []
+    with open('vars.txt', 'rb') as f:
+        while True:
+            try:
+                accounts.append(pickle.load(f))
+            except EOFError:
+                break
+
+    print('\n' + info + lg + ' Checking for banned accounts...' + rs)
+    banned = []
+    for a in accounts:
+        phn = a[0]
+        print(f'{plus}{grey} Checking {lg}{phn}')
+        clnt = TelegramClient(f'sessions/{phn}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+        clnt.connect()
+        if not clnt.is_user_authorized():
+            try:
+                clnt.send_code_request(phn)
+                print('OK')
+            except:
+                print(f'{error} {w}{phn} {r}is banned!{rs}')
+                banned.append(a)
+        time.sleep(0.5)
+        clnt.disconnect()
+
+    for z in banned:
+        accounts.remove(z)
+        print(info + lg + ' Banned account removed' + rs)
+
+    print(f'{info} Sessions created!')
+    clr()
+    banner()
+    print('Adding Account To Scrapeleet Channels in case you wanna speak to us')
+    auto_join_group()
+    print('All Account added successfully to Scrapeleet group\n')
+
+    print("Loading and Checking for verifications")
+    auto_join_group_smmleet()
+    time.sleep(5)
+    print("Checking Verification Done\n")
+
+    scraped_grp = input(f'{INPUT}{cy} Public/Private group URL link to scrape messages: {r}')
+    print("\nIf the group you want to scrape messages from has security verification,")
+    print("you'll need to join the group manually.")
+    print("Complete the verification process by answering the required questions before proceeding with message scraping.")
+    target = input(f'\n{INPUT}{cy} Enter group URL link to move messages to: {r}')
+    message_limit = int(input(f'{INPUT}{cy} Enter the number of messages to copy: {r}'))
+    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request [suggest 30]: {r}'))
+
+    account_clients = []
+    for acc in accounts:
+        c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+        c.start(acc[0])
+        account_clients.append((acc[0], c))
+
+    # Connect to groups
+    for _, client in account_clients:
+        if '/joinchat/' in scraped_grp:
+            g_hash = scraped_grp.split('/joinchat/')[1]
+            client(ImportChatInviteRequest(g_hash))
+        else:
+            client(JoinChannelRequest(scraped_grp))
+
+        if '/joinchat/' in target:
+            g_hash = target.split('/joinchat/')[1]
+            client(ImportChatInviteRequest(g_hash))
+        else:
+            client(JoinChannelRequest(target))
+
+    # Retrieve older messages
+    messages = []
+    total_messages = account_clients[0][1].get_messages(scraped_grp, limit=0).total
+    offset_id = total_messages
+
+    while len(messages) < message_limit and offset_id > 0:
+        batch = account_clients[0][1].get_messages(scraped_grp, limit=min(message_limit - len(messages), 100), offset_id=offset_id)
+        if not batch:
+            break
+        messages.extend(batch)
+        offset_id = batch[-1].id
+
+    messages.reverse()  # Start from the oldest message
+
+    # Move messages
+    account_index = 0
+    for msg in messages:
+        try:
+            acc_phone, client = account_clients[account_index]
+            target_details = client.get_entity(target)
+
+            if msg.media:
+                # Forward media messages
+                client(ForwardMessagesRequest(
+                    from_peer=scraped_grp,
+                    id=[msg.id],
+                    to_peer=target_details
+                ))
+                print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved media message: {cy}{msg.id}')
+            else:
+                # Send text messages
+                client(SendMessageRequest(target_details, msg.text))
+                print(f'{success}{lg} User: {cy}{acc_phone}{lg} -- Moved message: {cy}{msg.text}')
+
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+
+            account_index = (account_index + 1) % len(account_clients)
+
+        except Exception as e:
+            print(f'{error}{r} Error moving message: {e}')
+            continue
+
+    # Disconnect clients
+    for _, client in account_clients:
+        client.disconnect()
+
+    print(f'{info}{lg} Finished moving old messages!{rs}')
+
 
 
 # Move Message From Groups That does not have a shared link
@@ -1150,6 +1489,17 @@ def transfer_group_messages():
     print(f'{info} Sessions created!')
     clr()
     banner()
+    print('Adding Account To Scrapeleet Channels in case you wanna speak to us')
+    auto_join_group()
+    print('All Account added successfully to Scrapeleet group\n')
+
+    print("Loading and Checking for verifications")
+    time.sleep(5)
+    auto_join_group_smmleet()
+
+    print("\nIf the group you want to scrape messages from has security verification,")
+    print("you'll need to join the group manually.")
+    print("Complete the verification process by answering the required questions before proceeding with message scraping.")
 
     # Fetching all groups from the account
     all_groups = []
@@ -1513,7 +1863,7 @@ def hidden_members():
         ]
         for char in b:
             print(f'{random.choice(colors)}{char}{rs}')
-        print('Contact below address for get premium script')
+        print('Contact below address for premium script')
         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
 
@@ -1524,12 +1874,12 @@ def hidden_members():
             os.system('clear')
 
     accounts = []
-    f = open('vars.txt', 'rb')
-    while True:
-        try:
-            accounts.append(pickle.load(f))
-        except EOFError:
-            break
+    with open('vars.txt', 'rb') as f:
+        while True:
+            try:
+                accounts.append(pickle.load(f))
+            except EOFError:
+                break
 
     print('\n' + info + lg + ' Checking for banned accounts...' + rs)
     for a in accounts:
@@ -1556,36 +1906,27 @@ def hidden_members():
     banner()
 
     try:
-        scraped_grp = input(f'{INPUT}{cy} Public/Private group url link to scrape hidden members: {r}')
+        scraped_grp = input(f'{INPUT}{cy} Public/Private group URL to scrape members: {r}')
     except:
         print(f'{error} Failed to input group link!')
         return
 
-    scrape_limit = int(input(f'{INPUT}{cy} Enter number of members to scrape: {r}'))
+    scrape_limit = int(input(f'{INPUT}{cy} Enter number of members to scrape per account (limit: 100): {r}'))
 
-    accounts = []
-    f = open('vars.txt', 'rb')
-    while True:
-        try:
-            accounts.append(pickle.load(f))
-        except EOFError:
-            break
-
-    print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
-    number_of_accs = int(input(f'{INPUT}{cy} How Many Accounts You Want Use In Adding: {r}'))
+    number_of_accs = int(input(f'{INPUT}{cy} How many accounts do you want to use for adding? {r}'))
     print(f'{info}{cy} Choose an option{lg}')
     print(f'{cy}[0]{lg} Add to public group')
     print(f'{cy}[1]{lg} Add to private group')
     choice = int(input(f'{INPUT}{cy} Enter choice: {r}'))
 
     if choice == 0:
-        target = str(input(f'{INPUT}{cy} Enter public group url link: {r}'))
+        target = str(input(f'{INPUT}{cy} Enter public group URL link: {r}'))
     else:
-        target = str(input(f'{INPUT}{cy} Enter private group url link: {r}'))
+        target = str(input(f'{INPUT}{cy} Enter private group URL link: {r}'))
 
-    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request{w}[{lg}0 for None, suggest 30]: {r}'))
-    print(f'{info}{lg} Joining group from {w}{number_of_accs} accounts...')
-    print(f'{grey}-' * 50)
+    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request [suggest 30]: {r}'))
+
+    print(f'{info}{lg} Joining both groups from {w}{number_of_accs} accounts...')
 
     for acc in accounts[:number_of_accs]:
         c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
@@ -1594,6 +1935,33 @@ def hidden_members():
 
         try:
             scraped_grp_entity = c.get_entity(scraped_grp)
+            c(JoinChannelRequest(scraped_grp_entity))
+            print(f'{success}{lg} User {cy}{acc[0]} joined the source group successfully!{rs}')
+        except UserAlreadyParticipantError:
+            print(f'{info}{cy} User {acc[0]} is already a member of the source group!{rs}')
+        except Exception as e:
+            print(f'{error}{r} User {acc[0]} failed to join the source group. Error: {e}{rs}')
+            c.disconnect()
+            continue
+
+        try:
+            if choice == 0:
+                target_entity = c.get_entity(target)
+                c(JoinChannelRequest(target_entity))
+            else:
+                grp_hash = target.split('/joinchat/')[1]
+                c(ImportChatInviteRequest(grp_hash))
+                target_entity = c.get_entity(target)
+
+            print(f'{success}{lg} User {cy}{acc[0]} joined the destination group successfully!{rs}')
+        except UserAlreadyParticipantError:
+            print(f'{info}{cy} User {acc[0]} is already a member of the destination group!{rs}')
+        except Exception as e:
+            print(f'{error}{r} User {acc[0]} failed to join the destination group. Error: {e}{rs}')
+            c.disconnect()
+            continue
+
+        try:
             active_members = []
             for message in c.iter_messages(scraped_grp_entity):
                 if len(active_members) >= scrape_limit:
@@ -1609,18 +1977,9 @@ def hidden_members():
 
             print(f'{info}{lg} Retrieved {len(active_members)} active members!')
 
-            if choice == 0:
-                target_entity = c.get_entity(target)
-                target_details = InputPeerChannel(target_entity.id, target_entity.access_hash)
-            else:
-                grp_hash = target.split('/joinchat/')[1]
-                c(ImportChatInviteRequest(grp_hash))
-                target_entity = c.get_entity(target)
-                target_details = target_entity
-
             for user in active_members:
                 try:
-                    c(InviteToChannelRequest(target_details, [user]))
+                    c(InviteToChannelRequest(target_entity, [user]))
                     print(f'{success}{lg} Added member {cy}{user.username}')
                     time.sleep(sleep_time)
                 except UserAlreadyParticipantError:
@@ -1638,168 +1997,460 @@ def hidden_members():
     print(f'{info}{lg} Finished adding active members!{rs}')
 
 
+# def hidden_members():
+#     def banner():
+#         b = [
+#             '░█████╗░██████╗░██████╗░███████╗██████╗░',
+#             '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+#             '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+#             '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+#             '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+#             '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+#         ]
+#         for char in b:
+#             print(f'{random.choice(colors)}{char}{rs}')
+#         print('Contact below address for premium script')
+#         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
+#         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+
+#     def clr():
+#         if os.name == 'nt':
+#             os.system('cls')
+#         else:
+#             os.system('clear')
+
+#     accounts = []
+#     f = open('vars.txt', 'rb')
+#     while True:
+#         try:
+#             accounts.append(pickle.load(f))
+#         except EOFError:
+#             break
+
+#     print('\n' + info + lg + ' Checking for banned accounts...' + rs)
+#     for a in accounts:
+#         phn = a[0]
+#         print(f'{plus}{grey} Checking {lg}{phn}')
+#         clnt = TelegramClient(f'sessions/{phn}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         clnt.connect()
+#         banned = []
+#         if not clnt.is_user_authorized():
+#             try:
+#                 clnt.send_code_request(phn)
+#                 print('OK')
+#             except PhoneNumberBannedError:
+#                 print(f'{error} {w}{phn} {r}is banned!{rs}')
+#                 banned.append(a)
+#         for z in banned:
+#             accounts.remove(z)
+#             print(info + lg + ' Banned account removed[Remove permanently using manager.py]' + rs)
+#         time.sleep(0.5)
+#         clnt.disconnect()
+
+#     print(f'{info} Sessions created!')
+#     clr()
+#     banner()
+
+#     try:
+#         scraped_grp = input(f'{INPUT}{cy} Public/Private group URL to scrape members: {r}')
+#     except:
+#         print(f'{error} Failed to input group link!')
+#         return
+
+#     scrape_limit = int(input(f'{INPUT}{cy} Enter number of members to scrape per account (limit: 100): {r}'))
+
+#     number_of_accs = int(input(f'{INPUT}{cy} How many accounts do you want to use for adding? {r}'))
+#     print(f'{info}{cy} Choose an option{lg}')
+#     print(f'{cy}[0]{lg} Add to public group')
+#     print(f'{cy}[1]{lg} Add to private group')
+#     choice = int(input(f'{INPUT}{cy} Enter choice: {r}'))
+
+#     if choice == 0:
+#         target = str(input(f'{INPUT}{cy} Enter public group URL link: {r}'))
+#     else:
+#         target = str(input(f'{INPUT}{cy} Enter private group URL link: {r}'))
+
+#     sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request [suggest 30]: {r}'))
+
+#     print(f'{info}{lg} Joining both groups from {w}{number_of_accs} accounts...')
+
+#     for acc in accounts[:number_of_accs]:
+#         c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         print(f'{plus}{grey} User: {cy}{acc[0]}{lg} -- {cy}Starting session...')
+#         c.start(acc[0])
+
+#         # Step 1: Join the source group
+#         try:
+#             scraped_grp_entity = c.get_entity(scraped_grp)
+#             c(JoinChannelRequest(scraped_grp_entity))
+#             print(f'{success}{lg} User {cy}{acc[0]} joined the source group successfully!{rs}')
+#         except UserAlreadyParticipantError:
+#             print(f'{info}{cy} User {acc[0]} is already a member of the source group!{rs}')
+#         except Exception as e:
+#             print(f'{error}{r} User {acc[0]} failed to join the source group. Error: {e}{rs}')
+#             c.disconnect()
+#             continue
+
+#         # Step 2: Join the destination group
+#         try:
+#             if choice == 0:
+#                 target_entity = c.get_entity(target)
+#                 c(JoinChannelRequest(target_entity))
+#             else:
+#                 grp_hash = target.split('/joinchat/')[1]
+#                 c(ImportChatInviteRequest(grp_hash))
+#                 target_entity = c.get_entity(target)
+
+#             print(f'{success}{lg} User {cy}{acc[0]} joined the destination group successfully!{rs}')
+#         except UserAlreadyParticipantError:
+#             print(f'{info}{cy} User {acc[0]} is already a member of the destination group!{rs}')
+#         except Exception as e:
+#             print(f'{error}{r} User {acc[0]} failed to join the destination group. Error: {e}{rs}')
+#             c.disconnect()
+#             continue
+
+#         # Step 3: Scrape members and add to the destination group
+#         try:
+#             active_members = []
+#             for message in c.iter_messages(scraped_grp_entity):
+#                 if len(active_members) >= scrape_limit:
+#                     break
+#                 if message.sender_id:
+#                     try:
+#                         user = c.get_entity(message.sender_id)
+#                         if user not in active_members:
+#                             active_members.append(user)
+#                     except Exception as e:
+#                         print(f'{error}{r} Could not fetch user {message.sender_id}. Error: {e}')
+#                         continue
+
+#             print(f'{info}{lg} Retrieved {len(active_members)} active members!')
+
+#             for user in active_members:
+#                 try:
+#                     c(InviteToChannelRequest(target_entity, [user]))
+#                     print(f'{success}{lg} Added member {cy}{user.username}')
+#                     time.sleep(sleep_time)
+#                 except UserAlreadyParticipantError:
+#                     print(f'{info}{cy} User {cy}{user.username} already added!{rs}')
+#                 except UserPrivacyRestrictedError:
+#                     print(f'{info}{cy} User {cy}{user.username} has privacy restrictions!{rs}')
+#                 except Exception as e:
+#                     print(f'{error}{r} Failed to add user. Error: {e}')
+#         except Exception as e:
+#             print(f'{error}{r} Could not process group. Error: {e}')
+#         finally:
+#             c.disconnect()
+#             print(f'{grey}-' * 50)
+
+#     print(f'{info}{lg} Finished adding active members!{rs}')
+
+
+
+from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.types import ChannelParticipantsSearch
+
+
+# def scrape_hidden_members_from_groups():
+#     def banner():
+#         b = [
+#             '░█████╗░██████╗░██████╗░███████╗██████╗░',
+#             '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
+#             '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
+#             '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
+#             '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
+#             '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
+#         ]
+#         for char in b:
+#             print(f'{random.choice(colors)}{char}{rs}')
+#         print('Contact below address for premium script')
+#         print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
+#         print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
+
+#     def clr():
+#         if os.name == 'nt':
+#             os.system('cls')
+#         else:
+#             os.system('clear')
+
+#     banner()
+
+#     # Read accounts
+#     accounts = []
+#     with open('vars.txt', 'rb') as f:
+#         while True:
+#             try:
+#                 accounts.append(pickle.load(f))
+#             except EOFError:
+#                 break
+
+#     print(f'{info}{lg} Loaded {len(accounts)} accounts!')
+
+#     scrape_limit = int(input(f'{INPUT}{cy} Enter the number of members to scrape per account (limit: 100): {r}'))
+#     sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request (suggest 30): {r}'))
+
+#     # Fetch and display groups
+#     source_group = None
+#     for acc in accounts:
+#         client = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         client.start(acc[0])
+#         print(f'{info}{lg} Logged in as {cy}{acc[0]}{rs}')
+#         try:
+#             # Fetch and display groups for selection
+#             dialogs = client.get_dialogs()
+#             groups = [dialog for dialog in dialogs if dialog.is_group or dialog.is_channel]
+#             print(f'{info}{lg} Groups for account {cy}{acc[0]}:')
+#             for i, group in enumerate(groups):
+#                 print(f'{lg}[{i}] {group.name}')
+#             choice = int(input(f'{INPUT}{cy} Select a group number to scrape members from: {r}'))
+#             source_group = groups[choice].entity
+
+#             # Scrape members
+#             print(f'{info}{lg} Scraping members from {source_group.title}...')
+#             members = client(GetParticipantsRequest(
+#                 source_group,
+#                 filter=ChannelParticipantsSearch(''),
+#                 offset=0,
+#                 limit=scrape_limit,
+#                 hash=0
+#             )).users
+
+#             print(f'{success}{lg} Scraped {len(members)} members!')
+
+#             # Prompt for target group and add members
+#             target_group = input(f'{INPUT}{cy} Enter the target group URL or username to add members to: {r}')
+#             target_entity = client.get_entity(target_group)
+
+#             for member in members:
+#                 try:
+#                     client(InviteToChannelRequest(target_entity, [member]))
+#                     print(f'{success}{lg} Added {cy}{member.username or member.id} to target group!{rs}')
+#                     time.sleep(sleep_time)
+#                 except UserAlreadyParticipantError:
+#                     print(f'{info}{cy}{member.username or member.id} is already in the group.')
+#                 except UserPrivacyRestrictedError:
+#                     print(f'{error}{cy} Cannot add {member.username or member.id}. Privacy settings restrict this.')
+#                 except Exception as e:
+#                     print(f'{error}{r} Failed to add {member.username or member.id}. Error: {e}')
+#         except Exception as e:
+#             print(f'{error}{r} Could not process group. Error: {e}')
+#         finally:
+#             client.disconnect()
+#             print(f'{grey}-' * 50)
+
+#     print(f'{info}{lg} Completed adding members to the target group!{rs}')
+
+
+from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.types import ChannelParticipantsSearch
+
+
+from telethon.sync import TelegramClient
+from telethon.errors import UserAlreadyParticipantError, UserPrivacyRestrictedError
+from telethon.tl.functions.channels import GetParticipantsRequest, InviteToChannelRequest
+from telethon.tl.types import ChannelParticipantsSearch
+import pickle
+import time
+from colorama import Fore, Style
+
+# Color definitions
+info = Fore.CYAN
+success = Fore.GREEN
+error = Fore.RED
+input_color = Fore.YELLOW
+reset = Style.RESET_ALL
+
+def banner():
+    print(f"{success}░█████╗░██████╗░██████╗░███████╗██████╗░{reset}")
+    print(f"{success}██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗{reset}")
+    print(f"{success}███████║██║░░██║██║░░██║█████╗░░██████╔╝{reset}")
+    print(f"{success}██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗{reset}")
+    print(f"{success}██║░░██║██████╔╝██████╔╝███████╗██║░░██║{reset}")
+    print(f"{success}╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝{reset}")
+    print(f"{info}Version: 2.0 | GitHub: @Scrapeleet{reset}")
+    print(f"{info}Telegram: @Scrapeleet | Instagram: @Scrapeleet{reset}\n")
 
 def scrape_hidden_members_from_groups():
-    def banner():
-        b = [
-            '░█████╗░██████╗░██████╗░███████╗██████╗░',
-            '██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗',
-            '███████║██║░░██║██║░░██║█████╗░░██████╔╝',
-            '██╔══██║██║░░██║██║░░██║██╔══╝░░██╔══██╗',
-            '██║░░██║██████╔╝██████╔╝███████╗██║░░██║',
-            '╚═╝░░╚═╝╚═════╝░╚═════╝░╚══════╝╚═╝░░╚═╝'
-        ]
-        for char in b:
-            print(f'{random.choice(colors)}{char}{rs}')
-        print('Contact below address for get premium script')
-        print(f'{lg}Version: {w}2.0{lg} | GitHub: {w}@Scrapeleet{rs}')
-        print(f'{lg}Telegram: {w}@Scrapeleet{lg} | Instagram: {w}@Scrapeleet{rs}\n')
-
-    def clr():
-        if os.name == 'nt':
-            os.system('cls')
-        else:
-            os.system('clear')
-
-    accounts = []
-    f = open('vars.txt', 'rb')
-    while True:
-        try:
-            accounts.append(pickle.load(f))
-        except EOFError:
-            break
-
-    print('\n' + info + lg + ' Checking for banned accounts...' + rs)
-    for a in accounts:
-        phn = a[0]
-        print(f'{plus}{grey} Checking {lg}{phn}')
-        clnt = TelegramClient(f'sessions/{phn}', 3910389, '86f861352f0ab76a251866059a6adbd6')
-        clnt.connect()
-        banned = []
-        if not clnt.is_user_authorized():
-            try:
-                clnt.send_code_request(phn)
-                print('OK')
-            except PhoneNumberBannedError:
-                print(f'{error} {w}{phn} {r}is banned!{rs}')
-                banned.append(a)
-        for z in banned:
-            accounts.remove(z)
-            print(info + lg + ' Banned account removed[Remove permanently using manager.py]' + rs)
-        time.sleep(0.5)
-        clnt.disconnect()
-
-    print(f'{info} Sessions created!')
-    clr()
     banner()
 
-    # Fetch all groups from all accounts
-    group_dict = {}
-    for acc in accounts:
-        c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
-        c.start(acc[0])
-        try:
-            groups = [dialog.entity for dialog in c.iter_dialogs() if getattr(dialog.entity, 'megagroup', False)]
-            for group in groups:
-                group_dict[group.title] = group
-            print(f'{success}{lg} Fetched groups from {cy}{acc[0]}{rs}')
-        except Exception as e:
-            print(f'{error}{r} Failed to fetch groups for {acc[0]}. Error: {e}')
-        finally:
-            c.disconnect()
+    print(f"\n{info}Please ensure the following before starting:{reset}")
+    print(f"{success}1. Add all accounts to destination groups.{reset}")
+    print(f"{success}2. Add all accounts to target groups.\n{reset}")
 
-    if not group_dict:
-        print(f'{error}{r} No groups found! Exiting...')
-        return
-
-    # Display fetched groups to the user
-    print(f'{info}{lg} Available Groups:')
-    for idx, group_name in enumerate(group_dict.keys()):
-        print(f'{idx + 1}. {group_name}')
-
-    try:
-        selected_idx = int(input(f'{INPUT}{cy} Select a group to scrape members from (1-{len(group_dict)}): {r}')) - 1
-        selected_group = list(group_dict.values())[selected_idx]
-    except:
-        print(f'{error} Invalid selection! Exiting...')
-        return
-
-    scrape_limit = int(input(f'{INPUT}{cy} Enter number of members to scrape: {r}'))
-
+    # Load account credentials
     accounts = []
-    f = open('vars.txt', 'rb')
-    while True:
-        try:
-            accounts.append(pickle.load(f))
-        except EOFError:
-            break
+    with open('vars.txt', 'rb') as f:
+        while True:
+            try:
+                accounts.append(pickle.load(f))
+            except EOFError:
+                break
 
-    print(f'{info}{lg} Total accounts: {w}{len(accounts)}')
-    number_of_accs = int(input(f'{INPUT}{cy} How Many Accounts You Want Use In Adding: {r}'))
-    print(f'{info}{cy} Choose an option{lg} ')
-    print(f'{cy}[0]{lg} Add to public group')
-    print(f'{cy}[1]{lg} Add to private group')
-    choice = int(input(f'{INPUT}{cy} Enter choice: {r}'))
+    if not accounts:
+        print(f"{error}No accounts found in vars.txt!{reset}")
+        return
 
-    if choice == 0:
-        target = str(input(f'{INPUT}{cy} Enter public group url link: {r}'))
-    else:
-        target = str(input(f'{INPUT}{cy} Enter private group url link: {r}'))
+    print(f"{info}Loaded {len(accounts)} account(s).{reset}")
 
-    sleep_time = int(input(f'{INPUT}{cy} Enter delay time per request{w}[{lg}0 for None, suggest 30]: {r}'))
-    print(f'{info}{lg} Joining group from {w}{number_of_accs} accounts...')
-    print(f'{grey}-' * 50)
+    # Enter the target group URL/username
+    target_group_url = input(f"{input_color}Enter the target group URL or username: {reset}")
 
-    for acc in accounts[:number_of_accs]:
-        c = TelegramClient(f'sessions/{acc[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
-        print(f'{plus}{grey} User: {cy}{acc[0]}{lg} -- {cy}Starting session...')
-        c.start(acc[0])
+    # Fetch source groups from all accounts
+    all_groups = []
+    for account in accounts:
+        print(f"{info}Fetching groups for account {account[0]}...{reset}")
+        with TelegramClient(f'sessions/{account[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6') as client:
+            dialogs = client.get_dialogs()
+            groups = [dialog for dialog in dialogs if dialog.is_group or dialog.is_channel]
+            for group in groups:
+                all_groups.append((group.name, group.entity))
 
-        try:
-            active_members = []
-            for message in c.iter_messages(selected_group):
-                if len(active_members) >= scrape_limit:
-                    break
-                if message.sender_id:
+    if not all_groups:
+        print(f"{error}No groups available in any account!{reset}")
+        return
+
+    # Display available groups
+    print(f"\n{info}Available groups:{reset}")
+    for i, (name, _) in enumerate(all_groups):
+        print(f"{success}[{i}] {name}{reset}")
+
+    # User selects the source group
+    source_group_index = int(input(f"{input_color}Enter the number of the source group: {reset}"))
+
+    # Scrape members and add them to the target group
+    scrape_limit = int(input(f"{input_color}Enter the number of members to scrape per account: {reset}"))
+    delay_time = int(input(f"{input_color}Enter the delay time per request (seconds): {reset}"))
+
+    for account in accounts:
+        with TelegramClient(f'sessions/{account[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6') as client:
+            print(f"\n{info}Using account {account[0]} to scrape and add members...{reset}")
+
+            try:
+                # Fetch fresh instances of the source and target groups
+                source_group_entity = client.get_entity(all_groups[source_group_index][1])
+                target_group = client.get_entity(target_group_url)
+
+                # Scrape members from the source group
+                print(f"{info}Scraping members from {all_groups[source_group_index][0]}...{reset}")
+                participants = client(GetParticipantsRequest(
+                    source_group_entity,
+                    filter=ChannelParticipantsSearch(''),
+                    offset=0,
+                    limit=scrape_limit,
+                    hash=0
+                )).users
+
+                print(f"{success}Scraped {len(participants)} members. Adding them to {target_group.title}...{reset}")
+                for member in participants:
                     try:
-                        user = c.get_entity(message.sender_id)
-                        if user not in active_members:
-                            active_members.append(user)
+                        client(InviteToChannelRequest(target_group, [member]))
+                        print(f"{success}Added {member.username or member.id} to the target group!{reset}")
+                        time.sleep(delay_time)
                     except Exception as e:
-                        print(f'{error}{r} Could not fetch user {message.sender_id}. Error: {e}')
-                        continue
+                        print(f"{error}Error adding {member.username or member.id}: {e}{reset}")
 
-            print(f'{info}{lg} Retrieved {len(active_members)} active members!')
+            except Exception as e:
+                print(f"{error}An error occurred with account {account[0]}: {e}{reset}")
+                continue
 
-            if choice == 0:
-                target_entity = c.get_entity(target)
-                target_details = InputPeerChannel(target_entity.id, target_entity.access_hash)
-            else:
-                grp_hash = target.split('/joinchat/')[1]
-                c(ImportChatInviteRequest(grp_hash))
-                target_entity = c.get_entity(target)
-                target_details = target_entity
-
-            for user in active_members:
-                try:
-                    c(InviteToChannelRequest(target_details, [user]))
-                    print(f'{success}{lg} Added member {cy}{user.username}')
-                    time.sleep(sleep_time)
-                except UserAlreadyParticipantError:
-                    print(f'{info}{cy} User {cy}{user.username} already added!{rs}')
-                except UserPrivacyRestrictedError:
-                    print(f'{info}{cy} User {cy}{user.username} has privacy restrictions!{rs}')
-                except Exception as e:
-                    print(f'{error}{r} Failed to add user. Error: {e}')
-        except Exception as e:
-            print(f'{error}{r} Could not process group. Error: {e}')
-        finally:
-            c.disconnect()
-            print(f'{grey}-' * 50)
-
-    print(f'{info}{lg} Finished adding active members!{rs}')
+    print(f"\n{success}All operations completed.{reset}")
 
 
+
+# def scrape_hidden_members_from_groups():
+#     banner()
+
+#     print(f"\n{r}Please ensure the following before starting:{rs}")
+#     print(f"{cy}1. Add all accounts to destination groups.{rs}")
+#     print(f"{cy}2. Add all accounts to target groups.{rs}\n")
+
+#     # Load the account credentials
+#     accounts = []
+#     with open('vars.txt', 'rb') as f:
+#         while True:
+#             try:
+#                 accounts.append(pickle.load(f))
+#             except EOFError:
+#                 break
+
+#     if not accounts:
+#         print(f"{error}No accounts found in vars.txt!{reset}")
+#         return
+
+#     print(f"{info}Loaded {len(accounts)} account(s).{reset}")
+    
+#     # Select the target group
+#     target_group_url = input(f"{input_color}Enter the target group URL or username you want to add member to: {reset}")
+    
+#     # Start the client with each account and join the target group
+#     for account in accounts:
+#         client = TelegramClient(f'sessions/{account[0]}', 3910389, '86f861352f0ab76a251866059a6adbd6')
+#         client.start(account[0])
+
+#         try:
+#             print(f"{info}Joining the target group with account {account[0]}...{reset}")
+#             target_group = client.get_entity(target_group_url)
+            
+#             # Ensure that target_group is a valid channel
+#             if not target_group.megagroup and not target_group.broadcast:
+#                 print(f"{error}The target group is not a valid channel.{reset}")
+#                 continue
+
+#             # Add account to the target group
+#             try:
+#                 client(InviteToChannelRequest(target_group, [account[0]]))
+#                 print(f"{success}Account {account[0]} added to the target group!{reset}")
+#             except Exception as e:
+#                 print(f"{error}Error adding account {account[0]}: {e}{reset}")
+#                 continue
+
+#         except Exception as e:
+#             print(f"{error}An error occurred with account {account[0]}: {e}{reset}")
+#             continue
+
+#     # Now, after all accounts have joined the target group, proceed with member scraping and adding
+#     # Fetch available groups for scraping
+#     dialogs = client.get_dialogs()
+#     groups = [dialog for dialog in dialogs if dialog.is_group or dialog.is_channel]
+#     if not groups:
+#         print(f"{error}No groups available in this account!{reset}")
+#         return
+
+#     # Display available groups
+#     for i, group in enumerate(groups):
+#         print(f"{success}[{i}] {group.name}{reset}")
+    
+#     # Select the source group
+#     source_group_index = int(input(f"{input_color}Enter the number of the source group: {reset}"))
+#     source_group = groups[source_group_index].entity
+
+#     # Scraping and adding members
+#     scrape_limit = int(input(f"{input_color}Enter the number of members to scrape per account: {reset}"))
+#     delay_time = int(input(f"{input_color}Enter the delay time per request (seconds): {reset}"))
+
+#     print(f"{info}Scraping members from {source_group.title}...{reset}")
+#     participants = client(GetParticipantsRequest(
+#         source_group,
+#         filter=ChannelParticipantsSearch(''),
+#         offset=0,
+#         limit=scrape_limit,
+#         hash=0
+#     )).users
+
+#     print(f"{success}Scraped {len(participants)} members. Adding them to {target_group.title}...{reset}")
+#     for member in participants:
+#         try:
+#             client(InviteToChannelRequest(target_group, [member]))
+#             print(f"{success}Added {member.username or member.id} to the target group!{reset}")
+#             time.sleep(delay_time)
+#         except UserAlreadyParticipantError:
+#             print(f"{info}{member.username or member.id} is already in the group.{reset}")
+#         except UserPrivacyRestrictedError:
+#             print(f"{error}Cannot add {member.username or member.id}. Privacy settings restrict this.{reset}")
+#         except Exception as e:
+#             print(f"{error}Error adding {member.username or member.id}: {e}{reset}")
+
+#     print(f"{info}All operations completed.{reset}")
 
 
 
@@ -1994,11 +2645,89 @@ def save_token(token):
         file.write(token)  # Write the token to the file
 
 
-# Only 3 Devices
+# import os
+# import uuid
+# import platform
+# from colorama import Fore
+
+# # Define colors
+# r = Fore.RED
+# lg = Fore.GREEN
+# rs = Fore.RESET
+# cy = Fore.CYAN
+
+# # File to store the unique device identifiers
+# DEVICE_FILE = "device_ids.txt"
+# MAX_DEVICES = 3
+
+# def get_device_id():
+#     """
+#     Get a unique identifier for the device.
+#     This example uses the MAC address, but you could use other unique identifiers like UUID.
+#     """
+#     if platform.system() in ["Linux", "Darwin"]:
+#         # Get MAC address for Linux and macOS
+#         mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
+#         return mac
+#     elif platform.system() == "Windows":
+#         # Get a unique machine ID on Windows
+#         return str(uuid.getnode())  # MAC address or fallback to another unique ID
+#     return str(uuid.getnode())  # Fallback to UUID if OS is unsupported
+
+# def read_device_ids():
+#     """
+#     Read the stored device IDs from the device file.
+#     """
+#     if os.path.exists(DEVICE_FILE):
+#         with open(DEVICE_FILE, "r") as file:
+#             return file.read().splitlines()
+#     return []
+
+# def save_device_id(device_id):
+#     """
+#     Save the new device ID to the file.
+#     """
+#     with open(DEVICE_FILE, "a") as file:
+#         file.write(device_id + "\n")
+
+# def is_device_allowed():
+#     """
+#     Check if the device is allowed to run the script (i.e., not exceeding the device limit).
+#     """
+#     device_id = get_device_id()
+#     device_ids = read_device_ids()
+
+#     if device_id in device_ids:
+#         print(f"{lg}Device already registered. Access granted.{rs}")
+#         return True
+
+#     if len(device_ids) >= MAX_DEVICES:
+#         print(f"{r}Device limit reached ({MAX_DEVICES}). Cannot run the script on more devices.{rs}")
+#         return False
+
+#     save_device_id(device_id)
+#     print(f"{lg}Device {device_id} registered successfully. Access granted.{rs}")
+#     return True
+
+# def main_three_devices():
+#     if not is_device_allowed():
+#         print(f"{r}Exiting... This device is not allowed to run the script.{rs}")
+#         return False
+#     print(f"{lg}Script is running...{rs}")
+#     return True
+
 
 import os
 import uuid
 import platform
+import subprocess
+from colorama import Fore
+
+# Define colors
+r = Fore.RED
+lg = Fore.GREEN
+rs = Fore.RESET
+cy = Fore.CYAN
 
 # File to store the unique device identifiers
 DEVICE_FILE = "device_ids.txt"
@@ -2007,15 +2736,25 @@ MAX_DEVICES = 3
 def get_device_id():
     """
     Get a unique identifier for the device.
-    This example uses the MAC address, but you could use other unique identifiers like UUID.
+    This example uses the MAC address for desktops and the Android ID for Termux.
     """
-    if platform.system() == "Linux" or platform.system() == "Darwin":
-        # Get MAC address for Linux and macOS
-        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
-        return mac
+    if platform.system() in ["Linux", "Darwin"]:
+        if os.path.exists("/data/data/com.termux/files/usr/bin/termux-info"):
+            # If running in Termux on Android, fetch the Android ID
+            try:
+                android_id = subprocess.check_output(
+                    ["getprop", "ro.serialno"], universal_newlines=True
+                ).strip()
+                return android_id if android_id else str(uuid.getnode())
+            except subprocess.SubprocessError:
+                return str(uuid.getnode())
+        else:
+            # Get MAC address for Linux and macOS
+            mac = ':'.join(['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
+            return mac
     elif platform.system() == "Windows":
         # Get a unique machine ID on Windows
-        return str(uuid.getnode())  # MAC address or fallback to another unique ID
+        return str(uuid.getnode())
     return str(uuid.getnode())  # Fallback to UUID if OS is unsupported
 
 def read_device_ids():
@@ -2041,133 +2780,201 @@ def is_device_allowed():
     device_id = get_device_id()
     device_ids = read_device_ids()
 
-    if len(device_ids) >= MAX_DEVICES:
-        print(f"Device limit reached ({MAX_DEVICES}). Cannot run the script on more devices.")
-        return False
-    
-    # If device is not already in the list, add it
-    if device_id not in device_ids:
-        save_device_id(device_id)
-        print(f"Device {device_id} registered successfully.")
+    if device_id in device_ids:
+        print(f"{lg}Device already registered. Access granted.{rs}")
+        return True
 
+    if len(device_ids) >= MAX_DEVICES:
+        print(f"{r}Device limit reached ({MAX_DEVICES}). Cannot run the script on more devices.{rs}")
+        return False
+
+    save_device_id(device_id)
+    print(f"{lg}Device {device_id} registered successfully. Access granted.{rs}")
     return True
 
 def main_three_devices():
     if not is_device_allowed():
-        print("Exiting... This device is not allowed to run the script.")
-        return
-    
-    print("Script is running...")
+        print(f"{r}Exiting... This device is not allowed to run the script.{rs}")
+        return False
+    print(f"{lg}Script is running...{rs}")
+    return True
+
+
+import uuid
+import os
+import requests
+
+# Function to get token from file
+def get_token_from_file():
+    try:
+        with open('token.txt', 'r') as file:
+            token = file.read().strip()  # Remove any extra whitespace or newline characters
+            return token
+    except FileNotFoundError:
+        print("Error: token.txt file not found.")
+        return None
+
+# Function to generate or load a device ID
+def get_device_id():
+    device_id_file = 'device_ids.txt'
+
+    # If the device ID file exists, read the ID from it
+    if os.path.exists(device_id_file):
+        with open(device_id_file, 'r') as file:
+            device_id = file.read().strip()
+            return device_id
+    else:
+        # Generate a new device ID and save it to the file
+        device_id = str(uuid.uuid4())
+        with open(device_id_file, 'w') as file:
+            file.write(device_id)
+        return device_id
+
+# Function to verify the device
+def verify_device():
+    # Get the device ID (either from file or newly generated)
+    device_id = get_device_id()
+
+    # Get the token from the token.txt file
+    token = get_token_from_file()
+    if not token:
+        print("Error: Token not found.")
+        return False
+
+    # Replace with the actual API URL where the verification will happen
+    verify_url = 'https://scrapeleet.com/accounts/verify-device/'
+
+    # Start a session
+    session = requests.Session()
+
+    try:
+        # Send the device ID and token to verify and register the device
+        response = session.post(verify_url, data={'device_id': device_id, 'token': token})
+        
+        # Parse the response JSON (if possible)
+        response_data = response.json() if response.content else {}
+        #print(response_data)  # Debugging: Print the API response
+
+        if response.status_code == 201:
+            print(f"Device with ID {device_id} verified successfully.")
+            return True
+        elif response.status_code == 200:
+            # Handle "Device already verified" success case
+            message = response_data.get('message', '')
+            if message == "Device already verified.":
+                print(f"Device with ID {device_id} is already verified. Proceeding...")
+                return True
+            else:
+                print(f"Unexpected message: {message}")
+                return False
+        elif response.status_code == 400:
+            # Handle specific error messages from the API
+            error_message = response_data.get('error', 'Unknown error')
+            print(f"Error: {error_message}")
+            return False
+        else:
+            print(f"Unexpected response: {response_data or response.text}")
+            return False
+    except Exception as e:
+        print(f"An exception occurred: {e}")
+        return False
 
 
 
-
-
-from colorama import Fore
-
-# Define colors
-r = Fore.RED
-lg = Fore.GREEN
-rs = Fore.RESET
-w = Fore.WHITE
-grey = '\033[97m'
-cy = Fore.CYAN
-ye = Fore.YELLOW
-colors = [r, lg, w, ye, cy]
-
-# Define formatted messages
-info = f'{lg}[{w}i{lg}]{rs}'
-error = f'{lg}[{r}!{lg}]{rs}'
-success = f'{w}[{lg}*{w}]{rs}'
-INPUT = f'{lg}[{cy}~{lg}]{rs}'
-plus = f'{w}[{lg}+{w}]{rs}'
-minus = f'{w}[{lg}-{w}]{rs}'
 
 def main_menu():
-    token = load_token()
+    token = get_token_from_file()
 
     # Prompt for a valid token if none exists or if the token is invalid
     while True:
         if token is None:
-            token = input(lg + "[+] Enter your purchase token or get it from https://scrapeleet.com: ")
+            token = input(f"{lg}[+] Enter your purchase token or get it from https://scrapeleet.com: {rs}")
         else:
             is_valid, user_id = verify_token(token)
             if is_valid:
-                print(lg + f"[+] Loaded token verified for user ID: {user_id}. Access granted to the scraper.")
+                print(f"{lg}[+] Loaded token verified for user ID: {user_id}. Access granted to the scraper.{rs}")
                 save_token(token)
-                break  
+                break
             else:
-                print(r + "[!] Invalid or expired token. Please enter a valid token or purchase one from https://scrapeleet.com.")
-                token = input(lg + "[+] Enter your purchase token: ")
+                print(f"{r}[!] Invalid or expired token. Please enter a valid token or purchase one from https://scrapeleet.com.{rs}")
+                token = input(f"{lg}[+] Enter your purchase token: {rs}")
                 save_token(token)
-                break 
+                break
 
-    main_three_devices()
-    print('Adding Account To Scrapeleet Channels in case you wanna speak to us')
-    auto_join_group()
-    print('All Account added successfully to Scrapeleet group\n')
+    # Check if the device is verified before allowing access to the main menu
+    if not verify_device():
+        print(f"{r}[!] Device not verified. Exiting program.{rs}")
+        return
 
-    print("Loading and Checking for verifications")
-    time.sleep(5)
-    auto_join_group_smmleet()
-
-    """Display the main menu with options."""
+    # Retain the original menu style
     menu = f"""
 {cy}╔════════════════════════════════════╗
-{cy}║          {lg}Main Menu{cy}           ║
+{cy}║             {lg}Main Menu{cy}              ║
 {cy}╚════════════════════════════════════╝
+
+{lg}Account Management:
+
 {lg}1.{rs} Manage Account
-{lg}2.{rs} Automate Scraping and Members Adding
-{lg}3.{rs} Automate Scraping and Online Members Adding (New)
-{lg}4.{rs} Automate Scraping and Online Members Adding That has no share link (New)
-{lg}5.{rs} Automate Scraping and Hidden Members Adding
-{lg}6.{rs} Automate Scraping and Hidden Members Adding with No Share Links
-{lg}7.{rs} Move Messages From Group to Group (New)
-{lg}8.{rs} Send Bulk Messages to All Scraped Members (DMs)
-{lg}9.{rs} Scrape and Add Members That has no Share Links
-{lg}10.{rs} Move Messages From Group to Group That has no Share Links (New)
-{lg}11.{rs} Move Old Messages From Group to Group
-{lg}12.{rs} Exit Scrapeleet
+{lg}2.{rs} Set Your Profile Data and Photo
+
+{lg}Automation - Scraping and Adding:
+
+{lg}3.{rs} Automate Scraping and Members Adding
+{lg}4.{rs} Scrape and Add Members (No Share Links)
+{lg}5.{rs} Automate Scraping and Online Members Adding
+{lg}6.{rs} Automate Scraping and Online Members Adding (No Share Links)
+{lg}7.{rs} Automate Scraping and Hidden Members Adding
+{lg}8.{rs} Automate Scraping and Hidden Members Adding (No Share Links)
+
+{lg}Messaging:
+
+{lg}9.{rs} Send Bulk Messages to All Scraped Members (DMs)
+{lg}10.{rs} Moving New Messages From Group to Group
+{lg}11.{rs} Moving New Messages From Group to Group (No Share Links)
+{lg}12.{rs} Move Old Messages From Group to Group
+
+{lg}System:
+{lg}13.{rs} Exit Scrapeleet
 """
 
     while True:
         print(menu)
-        choice = input(f'\n{INPUT}{cy} Select an action: {rs}')
+        choice = input(f'\n{cy} Select an action: {rs}')
 
         if choice == '1':
             manager()
         elif choice == '2':
+            print('Setting profile data is coming soon in the next update.')
+        elif choice == '3':
             while True:
                 automation()
-        elif choice == '3':
-            automation_online_only()
         elif choice == '4':
-            fetch_and_add_online_members()
-        elif choice == '5':
-            hidden_members()
-        elif choice == '6':
-            scrape_hidden_members_from_groups()
-        elif choice == '7':
-            move_messages()
-        elif choice == '8':
-            scrape_and_send_bulk_message()
-        elif choice == '9':
             start_scraping_and_adding()
+        elif choice == '5':
+            automation_online_only()
+        elif choice == '6':
+            fetch_and_add_online_members()
+        elif choice == '7':
+            hidden_members()
+        elif choice == '8':
+            scrape_hidden_members_from_groups()
+        elif choice == '9':
+            scrape_and_send_bulk_message()
         elif choice == '10':
-            transfer_group_messages()
+            move_messages()
         elif choice == '11':
-            print('Automating moving old messages from group to group, coming in the next upgrade Scrapeleet V2.1')
-            print('Thanks for using scrapeleet')
+            transfer_group_messages()
         elif choice == '12':
+            move_old_messages()
+        elif choice == '13':
             print('Thanks for using Scrapeleet!')
             break
         else:
-            print(f'{error} {r}Invalid choice! Please select a valid option.{rs}')
+            print(f"{r}Invalid choice! Please select a valid option.{rs}")
             continue
-
 
 if __name__ == '__main__':
     try:
         main_menu()
     except KeyboardInterrupt:
-        print(f'\n{error} {r}Operation interrupted by the user. Exiting...{rs}')
+        print(f"\n{r}Operation interrupted by the user. Exiting...{rs}")
