@@ -4164,23 +4164,39 @@ def get_device_id():
         if platform.system() == "Linux" and "termux" in platform.platform().lower():
             # Mobile device (Termux on Android)
             try:
-                # Use `getprop` to retrieve the serial number as a unique identifier
+                # Use `getprop` to retrieve the build fingerprint
                 unique_identifier = subprocess.check_output(
-                    "getprop ro.serialno", shell=True
+                    "getprop ro.build.fingerprint", shell=True
                 ).strip().decode()
             except subprocess.CalledProcessError:
                 unique_identifier = None
             
-            # If serial number is unavailable, fallback to unique device ID (if any)
+            # Fallback to serial number if build fingerprint is unavailable
             if not unique_identifier:
-                unique_identifier = subprocess.check_output(
-                    "settings get secure android_id", shell=True
-                ).strip().decode()
+                try:
+                    unique_identifier = subprocess.check_output(
+                        "getprop ro.serialno", shell=True
+                    ).strip().decode()
+                except subprocess.CalledProcessError:
+                    unique_identifier = None
+
+            # Fallback to Android ID if serial number is unavailable
+            if not unique_identifier:
+                try:
+                    unique_identifier = subprocess.check_output(
+                        "settings get secure android_id", shell=True
+                    ).strip().decode()
+                except subprocess.CalledProcessError:
+                    unique_identifier = None
+
+            # If no identifier is found, fallback to a default value
+            if not unique_identifier or unique_identifier == "unknown":
+                unique_identifier = "Fallback_Termux_Device"
 
         else:
             # For non-Termux systems, use uuid's node-based MAC address retrieval
             unique_identifier = uuid.getnode()
-    except Exception:
+    except Exception as e:
         # Fallback if unique identifier retrieval fails
         unique_identifier = str(uuid.getnode())
 
@@ -4194,6 +4210,7 @@ def get_device_id():
     # Generate the device ID based on the unique identifier
     device_id = hashlib.sha256(unique_identifier.encode()).hexdigest()
     return device_id
+
 
 
 # Function to verify the device via the web app
