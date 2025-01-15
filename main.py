@@ -4169,34 +4169,12 @@ def get_device_id():
                     "getprop ro.build.fingerprint", shell=True
                 ).strip().decode()
             except subprocess.CalledProcessError:
-                unique_identifier = None
-            
-            # Fallback to serial number if build fingerprint is unavailable
-            if not unique_identifier:
-                try:
-                    unique_identifier = subprocess.check_output(
-                        "getprop ro.serialno", shell=True
-                    ).strip().decode()
-                except subprocess.CalledProcessError:
-                    unique_identifier = None
-
-            # Fallback to Android ID if serial number is unavailable
-            if not unique_identifier:
-                try:
-                    unique_identifier = subprocess.check_output(
-                        "settings get secure android_id", shell=True
-                    ).strip().decode()
-                except subprocess.CalledProcessError:
-                    unique_identifier = None
-
-            # If no identifier is found, fallback to a default value
-            if not unique_identifier or unique_identifier == "unknown":
+                # Fallback to a default value if the command fails
                 unique_identifier = "Fallback_Termux_Device"
-
         else:
             # For non-Termux systems, use uuid's node-based MAC address retrieval
             unique_identifier = uuid.getnode()
-    except Exception as e:
+    except Exception:
         # Fallback if unique identifier retrieval fails
         unique_identifier = str(uuid.getnode())
 
@@ -4210,7 +4188,6 @@ def get_device_id():
     # Generate the device ID based on the unique identifier
     device_id = hashlib.sha256(unique_identifier.encode()).hexdigest()
     return device_id
-
 
 
 # Function to verify the device via the web app
