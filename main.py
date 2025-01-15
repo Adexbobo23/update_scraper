@@ -4174,20 +4174,18 @@ def get_device_id():
         else:
             # For non-Termux systems, use uuid's node-based MAC address retrieval
             unique_identifier = uuid.getnode()
+            # Ensure unique_identifier is a string
+            if isinstance(unique_identifier, int):
+                unique_identifier = f"{unique_identifier:012x}"
+            
+            # Generate a hashed device ID for non-Termux systems
+            unique_identifier = hashlib.sha256(unique_identifier.encode()).hexdigest()
     except Exception:
         # Fallback if unique identifier retrieval fails
-        unique_identifier = str(uuid.getnode())
-
-    # Ensure unique_identifier is a string
-    if isinstance(unique_identifier, int):
-        unique_identifier = f"{unique_identifier:012x}"
-
-    if not unique_identifier:
         unique_identifier = "UnknownIdentifier"
 
-    # Generate the device ID based on the unique identifier
-    device_id = hashlib.sha256(unique_identifier.encode()).hexdigest()
-    return device_id
+    return unique_identifier
+
 
 
 # Function to verify the device via the web app
