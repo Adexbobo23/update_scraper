@@ -4158,49 +4158,41 @@ import platform
 import subprocess
 
 def get_device_id():
-    # Fetch system-specific details
-    try:
-        # Get the system's hostname
-        system_name = platform.node() or "UnknownSystem"
-    except Exception:
-        system_name = "UnknownSystem"
-
-    mac_address = None
+    unique_identifier = None
 
     try:
         if platform.system() == "Linux" and "termux" in platform.platform().lower():
             # Mobile device (Termux on Android)
             try:
-                # Check MAC address from wlan0
-                mac_address = subprocess.check_output(
-                    "cat /sys/class/net/wlan0/address", shell=True
-                ).strip().decode()
-            except subprocess.CalledProcessError:
-                # Fallback to eth0
-                mac_address = subprocess.check_output(
-                    "cat /sys/class/net/eth0/address", shell=True
-                ).strip().decode()
-            
-            # If MAC address is still not retrieved, fallback to `getprop`
-            if not mac_address:
-                mac_address = subprocess.check_output(
+                # Use `getprop` to retrieve the serial number as a unique identifier
+                unique_identifier = subprocess.check_output(
                     "getprop ro.serialno", shell=True
                 ).strip().decode()
+            except subprocess.CalledProcessError:
+                unique_identifier = None
+            
+            # If serial number is unavailable, fallback to unique device ID (if any)
+            if not unique_identifier:
+                unique_identifier = subprocess.check_output(
+                    "settings get secure android_id", shell=True
+                ).strip().decode()
+
         else:
             # For non-Termux systems, use uuid's node-based MAC address retrieval
-            mac_address = uuid.getnode()
+            unique_identifier = uuid.getnode()
     except Exception:
-        # Fallback if MAC retrieval fails
-        mac_address = str(uuid.getnode())
+        # Fallback if unique identifier retrieval fails
+        unique_identifier = str(uuid.getnode())
 
-    if not mac_address:
-        mac_address = "UnknownMAC"
+    # Ensure unique_identifier is a string
+    if isinstance(unique_identifier, int):
+        unique_identifier = f"{unique_identifier:012x}"
 
-    # Combine system_name and mac_address to generate the device ID
-    system_info = f"{system_name}_{mac_address}"
-    
-    # Hash the combined information for a consistent device ID
-    device_id = hashlib.sha256(system_info.encode()).hexdigest()
+    if not unique_identifier:
+        unique_identifier = "UnknownIdentifier"
+
+    # Generate the device ID based on the unique identifier
+    device_id = hashlib.sha256(unique_identifier.encode()).hexdigest()
     return device_id
 
 
